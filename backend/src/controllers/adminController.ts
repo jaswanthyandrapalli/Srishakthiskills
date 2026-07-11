@@ -45,6 +45,8 @@ export const logActivity = async (
 
 // Helper to handle optional Cloudinary uploads
 const uploadToCloudinary = async (imageSrc: string): Promise<string> => {
+  if (!imageSrc) return '';
+  
   if (imageSrc.startsWith('http')) {
     return imageSrc; // Already a URL
   }
@@ -63,78 +65,141 @@ const uploadToCloudinary = async (imageSrc: string): Promise<string> => {
   return imageSrc; // Fallback to raw base64
 };
 
-// @desc    Get Sales & Analytics data with detailed metrics
+// @desc    Get Sales & Analytics data with detailed metrics (using optimized MongoDB aggregation)
 // @route   GET /api/admin/analytics
 // @access  Private/Admin
 export const getDashboardAnalytics = async (req: any, res: Response): Promise<void> => {
   try {
-    const totalOrders = await Order.countDocuments({});
-    
-    // Total Revenue (Only from Paid orders)
-    const paidOrders = await Order.find({ isPaid: true });
-    const totalRevenue = paidOrders.reduce((acc, order) => acc + order.totalPrice, 0);
-    const totalUsers = await User.countDocuments({ role: 'user' });
-
-    // Today's Stats
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    
-    const todayOrders = await Order.find({ createdAt: { $gte: startOfToday } });
-    const todayOrdersCount = todayOrders.length;
-    const todayRevenue = todayOrders
-      .filter(o => o.isPaid)
-      .reduce((acc, order) => acc + order.totalPrice, 0);
 
-    // Pending/Cancelled/Delivered counts
-    const pendingOrdersCount = await Order.countDocuments({ orderStatus: 'Pending' });
-    const processingOrdersCount = await Order.countDocuments({ orderStatus: 'Processing' });
-    const shippedOrdersCount = await Order.countDocuments({ orderStatus: 'Shipped' });
-    const deliveredOrdersCount = await Order.countDocuments({ orderStatus: 'Delivered' });
-    const cancelledOrdersCount = await Order.countDocuments({ orderStatus: 'Cancelled' });
+    // Optimized aggregation facet to fetch all order analytics in a single query
+    const orderAgg = await Order.aggregate([
+      {
+        $facet: {
+          summary: [
+            {
+              $group: {
+                _id: null,
+                totalOrders: { $sum: 1 },
+                totalRevenue: { $sum: { $cond: [{ $eq: ['$isPaid', true] }, '$totalPrice', 0] } }
+              }
+            }
+          ],
+          today: [
+            { $match: { createdAt: { $gte: startOfToday } } },
+            {
+              $group: {
+                _id: null,
+                todayOrdersCount: { $sum: 1 },
+                todayRevenue: { $sum: { $cond: [{ $eq: ['$isPaid', true] }, '$totalPrice', 0] } }
+              }
+            }
+          ],
+          statusCounts: [
+            {
+              $group: {
+                _id: '$orderStatus',
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          dailyHistory: [
+            { $match: { isPaid: true } },
+            {
+              $group: {
+                _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                revenue: { $sum: '$totalPrice' },
+                orders: { $sum: 1 }
+              }
+            },
+            { $sort: { _id: 1 } },
+            { $limit: 10 }
+          ],
+          weeklyHistory: [
+            { $match: { isPaid: true } },
+            {
+              $group: {
+                _id: { $dateToString: { format: '%Y-W%V', date: '$createdAt' } },
+                revenue: { $sum: '$totalPrice' },
+                orders: { $sum: 1 }
+              }
+            },
+            { $sort: { _id: 1 } },
+            { $limit: 10 }
+          ],
+          monthlyHistory: [
+            { $match: { isPaid: true } },
+            {
+              $group: {
+                _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+                revenue: { $sum: '$totalPrice' },
+                orders: { $sum: 1 }
+              }
+            },
+            { $sort: { _id: 1 } },
+            { $limit: 12 }
+          ],
+          yearlyHistory: [
+            { $match: { isPaid: true } },
+            {
+              $group: {
+                _id: { $dateToString: { format: '%Y', date: '$createdAt' } },
+                revenue: { $sum: '$totalPrice' },
+                orders: { $sum: 1 }
+              }
+            },
+            { $sort: { _id: 1 } }
+          ],
+          topProducts: [
+            { $unwind: '$items' },
+            {
+              $group: {
+                _id: '$items.product',
+                name: { $first: '$items.name' },
+                totalQty: { $sum: '$items.quantity' },
+                totalSales: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
+              }
+            },
+            { $sort: { totalQty: -1 } },
+            { $limit: 5 }
+          ]
+        }
+      }
+    ]);
 
-    // Product stock states
+    const results = orderAgg[0];
+    const summary = results.summary[0] || { totalOrders: 0, totalRevenue: 0 };
+    const today = results.today[0] || { todayOrdersCount: 0, todayRevenue: 0 };
+    const statusCounts = results.statusCounts || [];
+
+    let pendingOrdersCount = 0;
+    let processingOrdersCount = 0;
+    let shippedOrdersCount = 0;
+    let deliveredOrdersCount = 0;
+    let cancelledOrdersCount = 0;
+
+    statusCounts.forEach((status: any) => {
+      if (status._id === 'Pending') pendingOrdersCount = status.count;
+      if (status._id === 'Processing') processingOrdersCount = status.count;
+      if (status._id === 'Shipped') shippedOrdersCount = status.count;
+      if (status._id === 'Delivered') deliveredOrdersCount = status.count;
+      if (status._id === 'Cancelled') cancelledOrdersCount = status.count;
+    });
+
+    const totalUsers = await User.countDocuments({ role: 'user' });
+    const totalProducts = await Product.countDocuments({});
     const outOfStockCount = await Product.countDocuments({ stock: 0 });
     const lowStockCount = await Product.countDocuments({ stock: { $gt: 0, $lte: 5 } });
 
-    // Calculations: Average Order Value (AOV)
-    const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-
-    // Top products by sales qty
-    const topProducts = await Order.aggregate([
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.product',
-          name: { $first: '$items.name' },
-          image: { $first: '$items.image' },
-          totalQty: { $sum: '$items.quantity' },
-          totalSales: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
-        }
-      },
-      { $sort: { totalQty: -1 } },
-      { $limit: 5 }
-    ]);
-
-    // Revenue history by date (last 10 days)
-    const salesHistory = await Order.aggregate([
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          revenue: { $sum: { $cond: [{ $eq: ['$isPaid', true] }, '$totalPrice', 0] } },
-          orders: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } },
-      { $limit: 10 }
-    ]);
-
     res.json({
       summary: {
-        totalOrders,
-        totalRevenue,
+        totalOrders: summary.totalOrders,
+        totalRevenue: summary.totalRevenue,
         totalUsers,
-        todayOrdersCount,
-        todayRevenue,
+        totalProducts,
+        todayOrdersCount: today.todayOrdersCount,
+        todayRevenue: today.todayRevenue,
         pendingOrdersCount,
         processingOrdersCount,
         shippedOrdersCount,
@@ -142,11 +207,17 @@ export const getDashboardAnalytics = async (req: any, res: Response): Promise<vo
         cancelledOrdersCount,
         outOfStockCount,
         lowStockCount,
-        averageOrderValue,
-        conversionRate: 3.4 // simulated standard conversion rate
+        averageOrderValue: summary.totalOrders > 0 ? Math.round(summary.totalRevenue / summary.totalOrders) : 0,
+        conversionRate: 3.4
       },
-      topProducts,
-      salesHistory
+      topProducts: results.topProducts,
+      salesHistory: results.dailyHistory,
+      charts: {
+        daily: results.dailyHistory,
+        weekly: results.weeklyHistory,
+        monthly: results.monthlyHistory,
+        yearly: results.yearlyHistory
+      }
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -217,12 +288,60 @@ export const updateOrderStatus = async (req: any, res: Response): Promise<void> 
   }
 };
 
-// @desc    Get all users (customers, staff, admins)
+// @desc    Get all users with their order spending summary & purchase histories
 // @route   GET /api/admin/users
 // @access  Private/Admin
 export const getAllUsers = async (req: any, res: Response): Promise<void> => {
   try {
-    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+    const users = await User.aggregate([
+      {
+        $lookup: {
+          from: 'orders',
+          localField: '_id',
+          foreignField: 'user',
+          as: 'orders'
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          email: 1,
+          phone: 1,
+          role: 1,
+          createdAt: 1,
+          orderCount: { $size: '$orders' },
+          totalSpent: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$orders',
+                    as: 'order',
+                    cond: { $eq: ['$$order.isPaid', true] }
+                  }
+                },
+                as: 'paidOrder',
+                in: '$$paidOrder.totalPrice'
+              }
+            }
+          },
+          orderHistory: {
+            $map: {
+              input: '$orders',
+              as: 'o',
+              in: {
+                _id: '$$o._id',
+                createdAt: '$$o.createdAt',
+                totalPrice: '$$o.totalPrice',
+                orderStatus: '$$o.orderStatus',
+                isPaid: '$$o.isPaid'
+              }
+            }
+          }
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
     res.json(users);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -286,9 +405,13 @@ export const createProduct = async (req: any, res: Response): Promise<void> => {
     const { name, price, discount, category, images, description, fabric, colors, stock } = req.body;
 
     const uploadedImages = [];
-    for (const img of images) {
-      const url = await uploadToCloudinary(img);
-      uploadedImages.push(url);
+    if (images && images.length > 0) {
+      for (const img of images) {
+        const url = await uploadToCloudinary(img);
+        uploadedImages.push(url);
+      }
+    } else {
+      uploadedImages.push('https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=300&q=80');
     }
 
     const product = new Product({
@@ -297,9 +420,9 @@ export const createProduct = async (req: any, res: Response): Promise<void> => {
       discount: Number(discount || 0),
       category,
       images: uploadedImages,
-      description,
-      fabric,
-      colors,
+      description: description || 'Elegant designer saree from Sri Sakthi collection.',
+      fabric: fabric || 'Cotton-Silk Blend',
+      colors: colors || ['Multi-color'],
       stock: Number(stock),
     });
 

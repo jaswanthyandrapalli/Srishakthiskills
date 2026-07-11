@@ -521,12 +521,21 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
       }
     } else {
       // Create user if not existing
-      user = await User.create({
-        name: name || email.split('@')[0],
-        email,
-        googleId,
-        role: 'user',
-      });
+      try {
+        user = await User.create({
+          name: name || email.split('@')[0],
+          email,
+          googleId,
+          role: 'user',
+        });
+      } catch (err: any) {
+        if (err.code === 11000) {
+          // Handled concurrent registration race condition: fetch the existing record instead
+          user = await User.findOne({ email });
+        } else {
+          throw err;
+        }
+      }
     }
 
     res.json({

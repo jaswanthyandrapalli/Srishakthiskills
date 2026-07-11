@@ -63,15 +63,15 @@ export default function ContactPage() {
 
               <div className="flex items-center">
                 <Phone className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
-                <a href="tel:+919999988888" className="hover:underline font-bold text-fg-custom">
-                  +91 99999 88888
+                <a href="tel:+918125106553" className="hover:underline font-bold text-fg-custom">
+                  +91 8125106553
                 </a>
               </div>
 
               <div className="flex items-center">
                 <Mail className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
                 <a href="mailto:support@srisakthisarees.com" className="hover:underline font-bold text-[#800000]">
-                  support@srisakthisarees.com
+                 srishakthi6699@gmail.com
                 </a>
               </div>
             </div>
@@ -79,14 +79,14 @@ export default function ContactPage() {
             {/* Helpline quick buttons */}
             <div className="flex flex-wrap gap-3 pt-3 border-t border-card-border/60">
               <a
-                href="tel:+919999988888"
+                href="tel:+918125106553"
                 className="flex items-center space-x-1.5 bg-maroon text-white font-bold uppercase text-[10px] tracking-wider px-5 py-3 rounded-lg hover:opacity-90 transition-opacity"
               >
                 <Phone className="w-3.5 h-3.5" />
                 <span>Call Store</span>
               </a>
               <a
-                href="https://wa.me/919999988888?text=Hi%20Sri%20Sakthi%20Sarees%2C%20I%20have%20an%20inquiry%20about..."
+                href="https://wa.me/918125106553?text=Hi%20Sri%20Sakthi%20Sarees%2C%20I%20have%20an%20inquiry%20about..."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-1.5 bg-green-600 text-white font-bold uppercase text-[10px] tracking-wider px-5 py-3 rounded-lg hover:bg-green-700 transition-colors"

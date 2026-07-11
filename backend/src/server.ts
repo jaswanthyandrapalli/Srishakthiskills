@@ -69,14 +69,21 @@ const createInitialSuperAdmin = async (): Promise<void> => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(superAdminPassword, salt);
 
-  await User.create({
-    name: 'Krishna Kumari',
-    email: 'yandrapallijaswanth@gmail.com',
-    password: hashedPassword,
-    role: 'super-admin',
-  });
-
-  console.log('Initial Super Admin account created successfully.');
+  try {
+    await User.create({
+      name: 'Krishna Kumari',
+      email: 'yandrapallijaswanth@gmail.com',
+      password: hashedPassword,
+      role: 'super-admin',
+    });
+    console.log('Initial Super Admin account created successfully.');
+  } catch (err: any) {
+    if (err.code === 11000) {
+      console.log('Initial Super Admin already exists (seeding duplicate write caught and ignored).');
+    } else {
+      console.error('Failed to create initial super admin:', err.message);
+    }
+  }
 };
 
 // Database connection
