@@ -77,11 +77,24 @@ export const sendOTP = async (req: Request, res: Response): Promise<void> => {
         message: 'OTP sent successfully to your email.'
       });
     } catch (emailError: any) {
-      console.error('Nodemailer transport error:', emailError);
-      console.warn(`\n[OTP FALLBACK] Failed to send email to ${email}. Developer OTP is: ${otp}\n`);
-      res.status(200).json({
-        success: true,
-        message: 'OTP generated. (Check server console since email sending failed).'
+      console.error("Email sending failed:", emailError);
+      
+      // Fallback for local development so developers are not blocked by invalid/missing SMTP credentials
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`\n[OTP FALLBACK] Failed to send email to ${email}. Developer OTP is: ${otp}\n`);
+        res.status(200).json({
+          success: true,
+          message: 'OTP generated. (Check server console since email sending failed).',
+          developerWarning: 'Nodemailer failed. OTP logged to console.',
+          error: emailError.message || String(emailError)
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email',
+        error: emailError.message || String(emailError)
       });
     }
   } catch (error: any) {
@@ -130,11 +143,24 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
         message: 'OTP sent successfully to your email.'
       });
     } catch (emailError: any) {
-      console.error('Nodemailer resend error:', emailError);
-      console.warn(`\n[OTP FALLBACK] Failed to send email to ${email}. Developer OTP is: ${otp}\n`);
-      res.status(200).json({
-        success: true,
-        message: 'OTP generated. (Check server console since email sending failed).'
+      console.error("Email sending failed:", emailError);
+
+      // Fallback for local development so developers are not blocked by invalid/missing SMTP credentials
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`\n[OTP FALLBACK] Failed to send email to ${email}. Developer OTP is: ${otp}\n`);
+        res.status(200).json({
+          success: true,
+          message: 'OTP generated. (Check server console since email sending failed).',
+          developerWarning: 'Nodemailer failed. OTP logged to console.',
+          error: emailError.message || String(emailError)
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email',
+        error: emailError.message || String(emailError)
       });
     }
   } catch (error: any) {
