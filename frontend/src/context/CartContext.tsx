@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useAuth, API_URL } from './AuthContext';
 
 export interface CatalogProduct {
   _id: string;
@@ -58,6 +59,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, getAuthHeaders } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<CatalogProduct[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<CatalogProduct[]>([]);
@@ -66,15 +68,42 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load from local storage
   useEffect(() => {
     const localCart = localStorage.getItem('sri_sakthi_cart');
-    const localWishlist = localStorage.getItem('sri_sakthi_wishlist');
     const localRecent = localStorage.getItem('sri_sakthi_recent');
     const localCoupon = localStorage.getItem('sri_sakthi_coupon');
 
     if (localCart) setCartItems(JSON.parse(localCart));
-    if (localWishlist) setWishlist(JSON.parse(localWishlist));
     if (localRecent) setRecentlyViewed(JSON.parse(localRecent));
     if (localCoupon) setAppliedCoupon(JSON.parse(localCoupon));
   }, []);
+
+  // Load wishlist from backend if logged in, or local storage if guest
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (user) {
+        try {
+          const res = await fetch(`${API_URL}/wishlist`, {
+            headers: getAuthHeaders(),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setWishlist(data.wishlist || []);
+          } else {
+            console.error('Failed to load wishlist:', data.message);
+          }
+        } catch (error) {
+          console.error('Error fetching wishlist from server:', error);
+        }
+      } else {
+        const localWishlist = localStorage.getItem('sri_sakthi_wishlist');
+        if (localWishlist) {
+          setWishlist(JSON.parse(localWishlist));
+        } else {
+          setWishlist([]);
+        }
+      }
+    };
+    fetchWishlist();
+  }, [user]);
 
   const saveCart = (items: CartItem[]) => {
     setCartItems(items);
@@ -116,8 +145,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     removeCoupon();
   };
 
-  const toggleWishlist = (product: CatalogProduct) => {
+  const toggleWishlist = async (product: CatalogProduct) => {
     const exists = wishlist.some((w) => w._id === product._id);
+    
+    // Optimistic UI update
     let newWishlist: CatalogProduct[];
     if (exists) {
       newWishlist = wishlist.filter((w) => w._id !== product._id);
@@ -125,7 +156,42 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       newWishlist = [...wishlist, product];
     }
     setWishlist(newWishlist);
-    localStorage.setItem('sri_sakthi_wishlist', JSON.stringify(newWishlist));
+
+    if (user) {
+      try {
+        if (exists) {
+          // Delete from server wishlist
+          const res = await fetch(`${API_URL}/wishlist/${product._id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+          });
+          if (!res.ok) {
+            // Revert optimistic update
+            setWishlist(wishlist);
+            console.error('Failed to remove from server wishlist');
+          }
+        } else {
+          // Add to server wishlist
+          const res = await fetch(`${API_URL}/wishlist`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ productId: product._id }),
+          });
+          if (!res.ok) {
+            // Revert optimistic update
+            setWishlist(wishlist);
+            console.error('Failed to add to server wishlist');
+          }
+        }
+      } catch (error) {
+        // Revert optimistic update
+        setWishlist(wishlist);
+        console.error('Error syncing wishlist with server:', error);
+      }
+    } else {
+      // Guest mode
+      localStorage.setItem('sri_sakthi_wishlist', JSON.stringify(newWishlist));
+    }
   };
 
   const isInWishlist = (productId: string): boolean => {
