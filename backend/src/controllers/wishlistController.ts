@@ -8,7 +8,8 @@ import Product from '../models/Product.js';
 // @access  Private
 export const getWishlist = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user._id).populate('wishlist');
+    const userId = req.user.id || req.user._id;
+    const user = await User.findById(userId).populate('wishlist');
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
@@ -38,8 +39,9 @@ export const addToWishlist = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    const userId = req.user.id || req.user._id;
     const user = await User.findByIdAndUpdate(
-      req.user._id,
+      userId,
       { $addToSet: { wishlist: productId } },
       { new: true }
     ).populate('wishlist');
@@ -62,9 +64,10 @@ export const addToWishlist = async (req: AuthRequest, res: Response): Promise<vo
 export const removeFromWishlist = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const productId = req.params.id;
+    const userId = req.user.id || req.user._id;
 
     const user = await User.findByIdAndUpdate(
-      req.user._id,
+      userId,
       { $pull: { wishlist: productId } },
       { new: true }
     ).populate('wishlist');

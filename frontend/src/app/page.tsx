@@ -13,7 +13,7 @@ const CATEGORIES = [
   { name: 'Cotton', label: 'Cotton Sarees', img: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=300&q=80' },
   { name: 'Bridal', label: 'Bridal Sarees', img: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=300&q=80' },
   { name: 'Designer', label: 'Designer Sarees', img: 'https://images.unsplash.com/photo-1583391265517-35bbdad01209?auto=format&fit=crop&w=300&q=80' },
-  { name: 'Party Wear', label: 'Party Wear', img: 'https://images.unsplash.com/photo-1610030470298-40b355e71713?auto=format&fit=crop&w=300&q=80' },
+  { name: 'Party Wear', label: 'Party Wear', img: 'https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRhupdtol5KUneoE1q1mozdouO9dPX6FpvjuTg2KecQhD4VeJ65DTDOPzgp6O_sZHf-Vl83rdQoS2EDE7Es8RRDj8PY-XN05Th55W509QU' },
   { name: 'Handloom', label: 'Handloom', img: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=300&q=80' },
 ];
 
@@ -28,7 +28,7 @@ const INSTAGRAM_IMAGES = [
   'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=250&q=80',
   'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=250&q=80',
   'https://images.unsplash.com/photo-1583391265517-35bbdad01209?auto=format&fit=crop&w=250&q=80',
-  'https://images.unsplash.com/photo-1610030470298-40b355e71713?auto=format&fit=crop&w=250&q=80',
+  'https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRhupdtol5KUneoE1q1mozdouO9dPX6FpvjuTg2KecQhD4VeJ65DTDOPzgp6O_sZHf-Vl83rdQoS2EDE7Es8RRDj8PY-XN05Th55W509QU',
   'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=250&q=80'
 ];
 
@@ -85,7 +85,7 @@ export default function Home() {
 
   return (
     <div className="space-y-20 pb-20">
-      
+
       {/* HERO SECTION */}
       <section className="relative h-[90vh] flex items-center overflow-hidden">
         {/* Background Saree Image */}
@@ -115,14 +115,14 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
-            <Link 
-              href="/shop" 
+            <Link
+              href="/shop"
               className="shimmer-btn gold-gradient text-maroon-950 font-bold uppercase text-xs tracking-wider px-8 py-4 rounded shadow-lg hover:shadow-2xl transition-transform active:scale-95 text-center"
             >
               {t('btn_shop_now')}
             </Link>
-            <Link 
-              href="/contact" 
+            <Link
+              href="/contact"
               className="border border-[#F8D97D] text-[#F8D97D] hover:bg-[#F8D97D]/10 font-bold uppercase text-xs tracking-wider px-8 py-4 rounded transition-colors text-center"
             >
               {t('btn_contact_us')}
@@ -269,7 +269,7 @@ export default function Home() {
           <h2 className="font-serif-lux text-xl font-bold uppercase tracking-widest text-fg-custom/90">#SriSakthiSarees</h2>
           <p className="text-[10px] text-fg-custom/50 font-light mt-1">Tag us on Instagram to get featured in our saree catalog.</p>
         </div>
-        
+
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {INSTAGRAM_IMAGES.map((img, index) => (
             <div key={index} className="relative aspect-square rounded-lg overflow-hidden group border border-card-border">

@@ -89,9 +89,19 @@ function LoginPageContent() {
     setErrorMsg('');
     setSuccessMsg('');
 
+    // Reject blank or phone-number-only input in the email field
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMsg('Please enter your email address.');
+      return false;
+    }
+    if (/^[\d\s\-+()]+$/.test(trimmedEmail)) {
+      setErrorMsg('Please enter a valid email address, not a phone number.');
+      return false;
+    }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setErrorMsg('Please enter a valid email address.');
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMsg('Please enter a valid email address (e.g. name@example.com).');
       return false;
     }
 
@@ -363,16 +373,18 @@ function LoginPageContent() {
 
             {/* 1. PASSWORD LOGIN TAB */}
             {activeTab === 'login' && (
-              <form onSubmit={handlePasswordLogin} className="space-y-4">
+              <form onSubmit={handlePasswordLogin} className="space-y-4" autoComplete="off">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-fg-custom/60">Email Address</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3.5 w-4 h-4 text-fg-custom/40" />
                     <input
                       type="email"
+                      name="login-email"
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="username"
                       className="w-full text-xs bg-bg-custom border border-card-border rounded-lg pl-9 pr-3 py-3 focus:outline-none focus:border-gold text-fg-custom font-medium"
                       required
                     />
@@ -394,9 +406,11 @@ function LoginPageContent() {
                     <Lock className="absolute left-3 top-3.5 w-4 h-4 text-fg-custom/40" />
                     <input
                       type="password"
+                      name="login-password"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
                       className="w-full text-xs bg-bg-custom border border-card-border rounded-lg pl-9 pr-3 py-3 focus:outline-none focus:border-gold text-fg-custom font-medium"
                       required
                     />
@@ -414,16 +428,18 @@ function LoginPageContent() {
 
             {/* 2. REGISTRATION SIGNUP TAB */}
             {activeTab === 'signup' && (
-              <form onSubmit={handleSignupInit} className="space-y-4">
+              <form onSubmit={handleSignupInit} className="space-y-4" autoComplete="off">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-fg-custom/60">Full Name</label>
                   <div className="relative">
                     <User className="absolute left-3 top-3.5 w-4 h-4 text-fg-custom/40" />
                     <input
                       type="text"
-                      placeholder="e.g. Jaswanth Kumar"
+                      name="register-name"
+                      placeholder="e.g. Jaswanth "
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      autoComplete="name"
                       className="w-full text-xs bg-bg-custom border border-card-border rounded-lg pl-9 pr-3 py-3 focus:outline-none focus:border-gold text-fg-custom font-medium"
                       required
                     />
@@ -436,9 +452,11 @@ function LoginPageContent() {
                     <Mail className="absolute left-3 top-3.5 w-4 h-4 text-fg-custom/40" />
                     <input
                       type="email"
+                      name="register-email"
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
                       className="w-full text-xs bg-bg-custom border border-card-border rounded-lg pl-9 pr-3 py-3 focus:outline-none focus:border-gold text-fg-custom font-medium"
                       required
                     />
@@ -451,9 +469,11 @@ function LoginPageContent() {
                     <Phone className="absolute left-3 top-3.5 w-4 h-4 text-fg-custom/40" />
                     <input
                       type="tel"
+                      name="register-phone"
                       placeholder="e.g. 9988776655"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      autoComplete="tel"
                       className="w-full text-xs bg-bg-custom border border-card-border rounded-lg pl-9 pr-3 py-3 focus:outline-none focus:border-gold text-fg-custom font-medium"
                     />
                   </div>
@@ -465,9 +485,11 @@ function LoginPageContent() {
                     <Lock className="absolute left-3 top-3.5 w-4 h-4 text-fg-custom/40" />
                     <input
                       type="password"
+                      name="register-password"
                       placeholder="Min. 8 characters"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="new-password"
                       className="w-full text-xs bg-bg-custom border border-card-border rounded-lg pl-9 pr-3 py-3 focus:outline-none focus:border-gold text-fg-custom font-medium"
                       required
                     />
@@ -485,16 +507,18 @@ function LoginPageContent() {
 
             {/* 3. OTP VERIFICATION TAB (EMAIL REQUEST) */}
             {activeTab === 'otp' && (
-              <form onSubmit={handleOTPRequest} className="space-y-4">
+              <form onSubmit={handleOTPRequest} className="space-y-4" autoComplete="off">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-fg-custom/60">Email Address</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3.5 w-4 h-4 text-fg-custom/40" />
                     <input
                       type="email"
+                      name="otp-email"
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
                       className="w-full text-xs bg-bg-custom border border-card-border rounded-lg pl-9 pr-3 py-3 focus:outline-none focus:border-gold text-fg-custom font-medium"
                       required
                     />

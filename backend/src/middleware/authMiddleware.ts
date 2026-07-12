@@ -21,6 +21,9 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
         return;
       }
       
+      // Ensure req.user.id is explicitly set
+      req.user.id = req.user._id.toString();
+      
       next();
     } catch (error) {
       console.error('JWT Token Verification Error:', error);

@@ -65,19 +65,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [recentlyViewed, setRecentlyViewed] = useState<CatalogProduct[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
 
-  // Load from local storage
+  // Load non-cart and non-wishlist settings from local storage
   useEffect(() => {
-    const localCart = localStorage.getItem('sri_sakthi_cart');
     const localRecent = localStorage.getItem('sri_sakthi_recent');
     const localCoupon = localStorage.getItem('sri_sakthi_coupon');
 
-    if (localCart) setCartItems(JSON.parse(localCart));
     if (localRecent) setRecentlyViewed(JSON.parse(localRecent));
     if (localCoupon) setAppliedCoupon(JSON.parse(localCoupon));
   }, []);
 
   // Load wishlist from backend if logged in, or local storage if guest
   useEffect(() => {
+    // Synchronously reset / load user-specific cached data from localStorage to prevent flash/stale leak
+    if (user) {
+      const localUserWishlist = localStorage.getItem(`sri_sakthi_wishlist_${user._id}`);
+      setWishlist(localUserWishlist ? JSON.parse(localUserWishlist) : []);
+    } else {
+      const localWishlist = localStorage.getItem('sri_sakthi_wishlist_guest');
+      setWishlist(localWishlist ? JSON.parse(localWishlist) : []);
+    }
+
     const fetchWishlist = async () => {
       if (user) {
         try {
@@ -86,62 +93,166 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            setWishlist(data.wishlist || []);
+            const serverWishlist = data.wishlist || [];
+            setWishlist(serverWishlist);
+            localStorage.setItem(`sri_sakthi_wishlist_${user._id}`, JSON.stringify(serverWishlist));
           } else {
             console.error('Failed to load wishlist:', data.message);
           }
         } catch (error) {
           console.error('Error fetching wishlist from server:', error);
         }
-      } else {
-        const localWishlist = localStorage.getItem('sri_sakthi_wishlist');
-        if (localWishlist) {
-          setWishlist(JSON.parse(localWishlist));
-        } else {
-          setWishlist([]);
-        }
       }
     };
     fetchWishlist();
   }, [user]);
 
-  const saveCart = (items: CartItem[]) => {
-    setCartItems(items);
-    localStorage.setItem('sri_sakthi_cart', JSON.stringify(items));
-  };
-
-  const addToCart = (item: Omit<CartItem, 'quantity'>, qty: number = 1) => {
-    const existingIndex = cartItems.findIndex(
-      (c) => c.product === item.product && c.color === item.color
-    );
-
-    const newCart = [...cartItems];
-    if (existingIndex > -1) {
-      const newQty = newCart[existingIndex].quantity + qty;
-      newCart[existingIndex].quantity = Math.min(newQty, item.stock);
+  // Load user-specific cart from backend if logged in, or local storage if guest
+  useEffect(() => {
+    // Synchronously reset / load user-specific cached data from localStorage to prevent flash/stale leak
+    if (user) {
+      const localUserCart = localStorage.getItem(`sri_sakthi_cart_${user._id}`);
+      setCartItems(localUserCart ? JSON.parse(localUserCart) : []);
     } else {
-      newCart.push({ ...item, quantity: Math.min(qty, item.stock) });
+      const localCart = localStorage.getItem('sri_sakthi_cart_guest');
+      setCartItems(localCart ? JSON.parse(localCart) : []);
     }
-    saveCart(newCart);
-  };
 
-  const removeFromCart = (productId: string, color: string) => {
-    const newCart = cartItems.filter((c) => !(c.product === productId && c.color === color));
-    saveCart(newCart);
-  };
-
-  const updateCartQty = (productId: string, color: string, qty: number) => {
-    const newCart = cartItems.map((c) => {
-      if (c.product === productId && c.color === color) {
-        return { ...c, quantity: Math.max(1, Math.min(qty, c.stock)) };
+    const fetchCart = async () => {
+      if (user) {
+        try {
+          const res = await fetch(`${API_URL}/cart`, {
+            headers: getAuthHeaders(),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            const items = data.cart?.items || [];
+            setCartItems(items);
+            localStorage.setItem(`sri_sakthi_cart_${user._id}`, JSON.stringify(items));
+          } else {
+            console.error('Failed to load cart:', data.message);
+          }
+        } catch (error) {
+          console.error('Error fetching cart from server:', error);
+        }
       }
-      return c;
-    });
-    saveCart(newCart);
+    };
+    fetchCart();
+  }, [user]);
+
+  const addToCart = async (item: Omit<CartItem, 'quantity'>, qty: number = 1) => {
+    if (user) {
+      try {
+        const res = await fetch(`${API_URL}/cart`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ ...item, quantity: qty }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const updatedItems = data.cart?.items || [];
+          setCartItems(updatedItems);
+          localStorage.setItem(`sri_sakthi_cart_${user._id}`, JSON.stringify(updatedItems));
+        } else {
+          console.error('Failed to add to cart on server:', data.message);
+        }
+      } catch (error) {
+        console.error('Error adding to cart on server:', error);
+      }
+    } else {
+      // Guest mode
+      const existingIndex = cartItems.findIndex(
+        (c) => c.product === item.product && c.color === item.color
+      );
+      const newCart = [...cartItems];
+      if (existingIndex > -1) {
+        const newQty = newCart[existingIndex].quantity + qty;
+        newCart[existingIndex].quantity = Math.min(newQty, item.stock);
+      } else {
+        newCart.push({ ...item, quantity: Math.min(qty, item.stock) });
+      }
+      setCartItems(newCart);
+      localStorage.setItem('sri_sakthi_cart_guest', JSON.stringify(newCart));
+    }
   };
 
-  const clearCart = () => {
-    saveCart([]);
+  const removeFromCart = async (productId: string, color: string) => {
+    if (user) {
+      try {
+        const res = await fetch(`${API_URL}/cart/${productId}/${encodeURIComponent(color)}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const updatedItems = data.cart?.items || [];
+          setCartItems(updatedItems);
+          localStorage.setItem(`sri_sakthi_cart_${user._id}`, JSON.stringify(updatedItems));
+        } else {
+          console.error('Failed to remove from cart on server:', data.message);
+        }
+      } catch (error) {
+        console.error('Error removing from cart on server:', error);
+      }
+    } else {
+      const newCart = cartItems.filter((c) => !(c.product === productId && c.color === color));
+      setCartItems(newCart);
+      localStorage.setItem('sri_sakthi_cart_guest', JSON.stringify(newCart));
+    }
+  };
+
+  const updateCartQty = async (productId: string, color: string, qty: number) => {
+    if (user) {
+      try {
+        const res = await fetch(`${API_URL}/cart/qty`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ product: productId, color, quantity: qty }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const updatedItems = data.cart?.items || [];
+          setCartItems(updatedItems);
+          localStorage.setItem(`sri_sakthi_cart_${user._id}`, JSON.stringify(updatedItems));
+        } else {
+          console.error('Failed to update cart quantity on server:', data.message);
+        }
+      } catch (error) {
+        console.error('Error updating cart quantity on server:', error);
+      }
+    } else {
+      const newCart = cartItems.map((c) => {
+        if (c.product === productId && c.color === color) {
+          return { ...c, quantity: Math.max(1, Math.min(qty, c.stock)) };
+        }
+        return c;
+      });
+      setCartItems(newCart);
+      localStorage.setItem('sri_sakthi_cart_guest', JSON.stringify(newCart));
+    }
+  };
+
+  const clearCart = async () => {
+    if (user) {
+      try {
+        const res = await fetch(`${API_URL}/cart`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setCartItems([]);
+          localStorage.setItem(`sri_sakthi_cart_${user._id}`, JSON.stringify([]));
+        } else {
+          console.error('Failed to clear cart on server:', data.message);
+        }
+      } catch (error) {
+        console.error('Error clearing cart on server:', error);
+      }
+    } else {
+      setCartItems([]);
+      localStorage.setItem('sri_sakthi_cart_guest', JSON.stringify([]));
+    }
     removeCoupon();
   };
 
@@ -158,6 +269,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setWishlist(newWishlist);
 
     if (user) {
+      // Optimistic user-specific localStorage update
+      localStorage.setItem(`sri_sakthi_wishlist_${user._id}`, JSON.stringify(newWishlist));
       try {
         if (exists) {
           // Delete from server wishlist
@@ -168,6 +281,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!res.ok) {
             // Revert optimistic update
             setWishlist(wishlist);
+            localStorage.setItem(`sri_sakthi_wishlist_${user._id}`, JSON.stringify(wishlist));
             console.error('Failed to remove from server wishlist');
           }
         } else {
@@ -180,17 +294,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!res.ok) {
             // Revert optimistic update
             setWishlist(wishlist);
+            localStorage.setItem(`sri_sakthi_wishlist_${user._id}`, JSON.stringify(wishlist));
             console.error('Failed to add to server wishlist');
           }
         }
       } catch (error) {
         // Revert optimistic update
         setWishlist(wishlist);
+        localStorage.setItem(`sri_sakthi_wishlist_${user._id}`, JSON.stringify(wishlist));
         console.error('Error syncing wishlist with server:', error);
       }
     } else {
       // Guest mode
-      localStorage.setItem('sri_sakthi_wishlist', JSON.stringify(newWishlist));
+      localStorage.setItem('sri_sakthi_wishlist_guest', JSON.stringify(newWishlist));
     }
   };
 

@@ -11,6 +11,7 @@ import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
 
 // Model imports (needed for seeding)
 import Product from './models/Product.js';
@@ -250,6 +251,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Base Route
 app.get('/', (req, res) => {
