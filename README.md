@@ -6,6 +6,7 @@
 [![Language](https://img.shields.io/badge/Language-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![Database](https://img.shields.io/badge/Database-MongoDB%20%28Mongoose%29-emerald.svg)](https://www.mongodb.com/)
 [![Security](https://img.shields.io/badge/Security-JWT%20%7C%20Bcrypt%20%7C%20RateLimit-red.svg)](https://jwt.io/)
+[![Payment](https://img.shields.io/badge/Payment-Razorpay%20Test%20Mode-0a2540.svg)](https://razorpay.com/)
 
 A full-stack, enterprise-grade e-commerce application tailored for **Sri Sakthi Sarees**, featuring a premium customer portal, modular admin capabilities, and a secure **Email OTP Authentication System** designed with production-ready security practices.
 
@@ -32,6 +33,7 @@ graph TD
 * **Database**: MongoDB Atlas using Mongoose ODM, utilizing MongoDB TTL (Time-To-Live) index for automated session cleanup.
 * **Security & Auth**: JSON Web Tokens (JWT), Salted Password Hashing (`bcryptjs`), API Rate Limiting (`express-rate-limit`).
 * **Email Service**: SMTP integration using `nodemailer` and Gmail secure App Passwords.
+* **Payment Gateway**: Razorpay (Test Mode Integration) — supports order creation, payment verification, and webhook-ready architecture.
 
 ---
 
@@ -46,6 +48,38 @@ The application features a secure, production-grade email verification system to
 4. **Rate Limiting**: Defends endpoints against brute force and abuse by limiting IP requests to 5 attempts per 10 minutes.
 5. **Interactive Frontend View**: Slices OTP input into 6 independent boxes with automatic focus shifting (forward-focus on keydown, backward-focus on backspace, and copy-paste clipboard parsing).
 6. **Graceful Fallback Mode**: Supports memory-cache fallbacks if MongoDB or SMTP settings are offline, guaranteeing local testability.
+
+---
+
+## 💳 Payment Gateway: Razorpay (Test Mode Integration)
+
+The application integrates **Razorpay** in **Test Mode** to simulate the complete order payment lifecycle without processing real transactions. This allows safe end-to-end testing of the checkout flow.
+
+### How It Works
+1. **Order Creation**: On checkout, the backend calls the Razorpay Orders API to create a tracked payment order with the cart total amount (in paise).
+2. **Payment Modal**: The frontend loads the Razorpay JS SDK and opens the hosted payment modal, presenting the customer with test card/UPI/netbanking options.
+3. **Payment Verification**: After payment, Razorpay sends back `razorpay_payment_id`, `razorpay_order_id`, and `razorpay_signature`. The backend verifies the HMAC-SHA256 signature to confirm authenticity before marking the order as paid.
+4. **Mock Fallback**: If `RAZORPAY_KEY_ID` is not configured in `.env`, the system falls back to a mock payment confirmation so developers can test the full order flow offline.
+
+### Test Credentials
+Use these in the Razorpay payment modal during testing (no real money is charged):
+
+| Method | Details |
+| :--- | :--- |
+| **Test Card Number** | `4111 1111 1111 1111` |
+| **Expiry** | Any future date (e.g. `12/26`) |
+| **CVV** | Any 3-digit number (e.g. `123`) |
+| **UPI Test ID** | `success@razorpay` |
+| **Net Banking** | Select any bank → use test credentials |
+
+> **Note**: Switch to **Razorpay Live Mode** by replacing the Test API keys with Live keys from your [Razorpay Dashboard](https://dashboard.razorpay.com/) before going to production. Never commit live secret keys to version control.
+
+### Required Environment Variables
+```env
+# Add these to backend/.env
+RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXXXXXX
+RAZORPAY_KEY_SECRET=XXXXXXXXXXXXXXXXXXXXXXXX
+```
 
 ---
 
@@ -244,6 +278,10 @@ SMTP_SECURE=true
 SMTP_USER=yourgmailaddress@gmail.com
 SMTP_PASS=your_16_character_gmail_app_password
 SMTP_FROM="Sri Sakthi Sarees <yourgmailaddress@gmail.com>"
+
+# Razorpay Payment Gateway (Test Mode)
+RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXXXXXX
+RAZORPAY_KEY_SECRET=XXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 ### 3. Start Development Servers
@@ -270,3 +308,5 @@ Open [http://localhost:3000](http://localhost:3000) to view the client-facing ap
 * **JWT Stateless Authentication**: Promotes scalability by avoiding server-side sessions, relying on signed tokens verify-verified on route gates.
 * **Database Expiry (TTL)**: Avoids storage overhead and database bloating by relying on Mongo engine indexes to auto-delete documents based on timestamp fields.
 * **Client-Side Slicing Pattern**: Implements UX focus-shifting utilizing React `useRef` arrays to handle keycodes and backspace deletions.
+* **Payment Gateway Integration**: Razorpay Test Mode integration demonstrating real-world payment order lifecycle — order creation, hosted modal, HMAC-SHA256 signature verification, and graceful mock fallback for offline development.
+* **User-Specific Data Isolation**: Cart and Wishlist are strictly scoped to the authenticated user's `_id`, preventing data leakage across user sessions. Per-user `localStorage` keys (`cart_{userId}`, `wishlist_{userId}`) ensure clean state on login and logout.
