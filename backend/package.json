@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "cloudinary": "^2.5.1",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.19.2",
@@ -20,6 +20,7 @@
     "mongodb": "^7.5.0",
     "mongoose": "^8.24.1",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
     "razorpay": "^2.9.4",
     "sri-sakthi-sarees": "file:.."

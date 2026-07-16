@@ -5,15 +5,32 @@ import nodemailer from 'nodemailer';
  */
 const getTransporter = () => {
   const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 465);
-  const secure = String(process.env.SMTP_SECURE || 'true').toLowerCase() === 'true';
+  const portStr = process.env.SMTP_PORT;
+  const secureStr = process.env.SMTP_SECURE;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM;
 
-  if (!host || !user || !pass) {
-    console.warn('SMTP configuration is missing. Nodemailer transporter could not be initialized.');
-    return null;
+  if (process.env.NODE_ENV === 'production') {
+    if (!host || !portStr || !secureStr || !user || !pass || !from) {
+      const missing = [];
+      if (!host) missing.push('SMTP_HOST');
+      if (!portStr) missing.push('SMTP_PORT');
+      if (!secureStr) missing.push('SMTP_SECURE');
+      if (!user) missing.push('SMTP_USER');
+      if (!pass) missing.push('SMTP_PASS');
+      if (!from) missing.push('SMTP_FROM');
+      throw new Error(`SMTP configuration is incomplete in production. Missing variables: ${missing.join(', ')}`);
+    }
+  } else {
+    if (!host || !user || !pass) {
+      console.warn('SMTP configuration is missing. Nodemailer transporter could not be initialized.');
+      return null;
+    }
   }
+
+  const port = Number(portStr || 465);
+  const secure = String(secureStr || 'true').toLowerCase() === 'true';
 
   return nodemailer.createTransport({
     host,

@@ -4,11 +4,15 @@ export let isDbConnected = false;
 
 export const connectDB = async (): Promise<boolean> => {
   try {
-    const connStr = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/srisakthi';
-    console.log(`Connecting to MongoDB at: ${connStr}`);
+    const connStr = process.env.MONGODB_URI;
+    if (!connStr) {
+      throw new Error('MONGODB_URI is not defined in the environment variables.');
+    }
     
-    // We will attempt connection, but if it fails we log a warning and let the backend run
-    // in mock mode rather than crashing. This ensures the app is 100% testable.
+    // Mask password in the URI log to avoid exposing credentials in Render logs
+    const maskedConnStr = connStr.replace(/:([^:@]+)@/, ':******@');
+    console.log(`Connecting to MongoDB at: ${maskedConnStr}`);
+    
     mongoose.set('strictQuery', true);
     await mongoose.connect(connStr);
     isDbConnected = true;
@@ -16,7 +20,10 @@ export const connectDB = async (): Promise<boolean> => {
     return true;
   } catch (error: any) {
     isDbConnected = false;
-    console.error(`MongoDB Connection Warning: ${error.message}`);
+    console.error(`MongoDB Connection Error: ${error.message}`);
+    if (process.env.NODE_ENV === 'production') {
+      throw error; // Fail fast in production
+    }
     console.log('Backend will fallback to memory cache / mock mode where applicable.');
     return false;
   }

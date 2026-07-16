@@ -13,7 +13,11 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkeyforsrisakthisarees');
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        throw new Error('JWT_SECRET is not defined in environment variables.');
+      }
+      const decoded: any = jwt.verify(token, jwtSecret);
       
       req.user = await User.findById(decoded.id).select('-password');
       if (!req.user) {
