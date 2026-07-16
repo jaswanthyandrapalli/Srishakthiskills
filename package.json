@@ -1,17 +1,38 @@
 {
-  "name": "sri-sakthi-sarees",
+  "name": "sri-sakthi-sarees-backend",
   "version": "1.0.0",
-  "private": true,
+  "description": "Express backend for Sri Sakthi Sarees",
+  "main": "dist/server.js",
   "scripts": {
-    "postinstall": "npm install --prefix frontend && npm install --prefix backend --ignore-scripts",
-    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend --ignore-scripts",
-    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
-    "build": "npm run build --prefix frontend && npm run build --prefix backend",
-    "build:backend": "npm install --prefix backend --ignore-scripts && npm run build --prefix backend",
-    "start": "concurrently \"npm run start --prefix frontend\" \"npm run start --prefix backend\"",
-    "start:backend": "npm run start --prefix backend"
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.5.0",
+    "mongoose": "^8.24.1",
+    "morgan": "^1.10.0",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3",
+    "razorpay": "^2.9.4"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.14.2",
+    "@types/nodemailer": "^6.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.4.5"
   }
 }
