@@ -20,6 +20,7 @@ import User from './models/User.js';
 import bcrypt from 'bcryptjs';
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (required for express-rate-limit behind Render)
 const PORT = process.env.PORT || 5000;
 
 // Middleware

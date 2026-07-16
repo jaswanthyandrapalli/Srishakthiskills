@@ -22,6 +22,7 @@ const Coupon_js_1 = __importDefault(require("./models/Coupon.js"));
 const User_js_1 = __importDefault(require("./models/User.js"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const app = (0, express_1.default)();
+app.set('trust proxy', 1); // Trust first proxy (required for express-rate-limit behind Render)
 const PORT = process.env.PORT || 5000;
 // Middleware
 app.use((0, helmet_1.default)({
