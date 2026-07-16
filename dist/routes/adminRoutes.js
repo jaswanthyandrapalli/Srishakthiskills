@@ -1,0 +1,23 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const adminController_js_1 = require("../controllers/adminController.js");
+const authMiddleware_js_1 = require("../middleware/authMiddleware.js");
+const router = express_1.default.Router();
+router.use(authMiddleware_js_1.protect);
+router.use(authMiddleware_js_1.admin);
+router.get('/analytics', adminController_js_1.getDashboardAnalytics);
+router.get('/inventory-alerts', adminController_js_1.getInventoryAlerts);
+router.get('/orders', adminController_js_1.getAllOrders);
+router.put('/orders/:id/status', adminController_js_1.updateOrderStatus);
+router.get('/users', adminController_js_1.getAllUsers);
+router.put('/users/:id/role', adminController_js_1.updateUserRole);
+router.get('/logs', adminController_js_1.getActivityLogs);
+router.post('/products', adminController_js_1.createProduct);
+router.put('/products/:id', adminController_js_1.updateProduct);
+router.delete('/products/:id', adminController_js_1.deleteProduct);
+router.post('/coupons', adminController_js_1.createCoupon);
+exports.default = router;
