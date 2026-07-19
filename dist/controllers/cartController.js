@@ -5,6 +5,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.clearCart = exports.removeFromCart = exports.updateCartQty = exports.addToCart = exports.getCart = void 0;
 const Cart_js_1 = __importDefault(require("../models/Cart.js"));
+const db_js_1 = require("../config/db.js");
+// In-memory fallback cart store
+const fallbackCarts = new Map();
+const getFallbackCart = (userId) => {
+    let cart = fallbackCarts.get(userId);
+    if (!cart) {
+        cart = {
+            user: userId,
+            items: [],
+            save: async function () {
+                fallbackCarts.set(userId, this);
+                return this;
+            }
+        };
+        fallbackCarts.set(userId, cart);
+    }
+    return cart;
+};
 /**
  * @desc    Get logged in user's cart
  * @route   GET /api/cart
@@ -13,9 +31,15 @@ const Cart_js_1 = __importDefault(require("../models/Cart.js"));
 const getCart = async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
-        let cart = await Cart_js_1.default.findOne({ user: userId });
-        if (!cart) {
-            cart = await Cart_js_1.default.create({ user: userId, items: [] });
+        let cart;
+        if (!db_js_1.isDbConnected) {
+            cart = getFallbackCart(userId.toString());
+        }
+        else {
+            cart = await Cart_js_1.default.findOne({ user: userId });
+            if (!cart) {
+                cart = await Cart_js_1.default.create({ user: userId, items: [] });
+            }
         }
         res.status(200).json({ success: true, cart });
     }
@@ -38,9 +62,15 @@ const addToCart = async (req, res) => {
             res.status(400).json({ success: false, message: 'Missing required fields' });
             return;
         }
-        let cart = await Cart_js_1.default.findOne({ user: userId });
-        if (!cart) {
-            cart = new Cart_js_1.default({ user: userId, items: [] });
+        let cart;
+        if (!db_js_1.isDbConnected) {
+            cart = getFallbackCart(userId.toString());
+        }
+        else {
+            cart = await Cart_js_1.default.findOne({ user: userId });
+            if (!cart) {
+                cart = new Cart_js_1.default({ user: userId, items: [] });
+            }
         }
         const existingIndex = cart.items.findIndex((item) => item.product.toString() === product && item.color === color);
         const qty = quantity || 1;
@@ -82,7 +112,13 @@ const updateCartQty = async (req, res) => {
             res.status(400).json({ success: false, message: 'Product, color, and quantity are required' });
             return;
         }
-        const cart = await Cart_js_1.default.findOne({ user: userId });
+        let cart;
+        if (!db_js_1.isDbConnected) {
+            cart = fallbackCarts.get(userId.toString());
+        }
+        else {
+            cart = await Cart_js_1.default.findOne({ user: userId });
+        }
         if (!cart) {
             res.status(404).json({ success: false, message: 'Cart not found' });
             return;
@@ -116,7 +152,13 @@ const removeFromCart = async (req, res) => {
             res.status(400).json({ success: false, message: 'Product ID and color are required' });
             return;
         }
-        const cart = await Cart_js_1.default.findOne({ user: userId });
+        let cart;
+        if (!db_js_1.isDbConnected) {
+            cart = fallbackCarts.get(userId.toString());
+        }
+        else {
+            cart = await Cart_js_1.default.findOne({ user: userId });
+        }
         if (!cart) {
             res.status(404).json({ success: false, message: 'Cart not found' });
             return;
@@ -139,7 +181,13 @@ exports.removeFromCart = removeFromCart;
 const clearCart = async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
-        const cart = await Cart_js_1.default.findOne({ user: userId });
+        let cart;
+        if (!db_js_1.isDbConnected) {
+            cart = fallbackCarts.get(userId.toString());
+        }
+        else {
+            cart = await Cart_js_1.default.findOne({ user: userId });
+        }
         if (cart) {
             cart.items = [];
             await cart.save();

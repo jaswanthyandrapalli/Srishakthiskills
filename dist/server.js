@@ -28,8 +28,10 @@ const PORT = process.env.PORT || 5000;
 app.use((0, helmet_1.default)({
     contentSecurityPolicy: false, // Turn off CSP for easy local development / integration
 }));
+const frontendUrl = process.env.FRONTEND_URL;
+const corsOrigin = frontendUrl ? frontendUrl.replace(/\/$/, '') : 'http://localhost:3000';
 app.use((0, cors_1.default)({
-    origin: process.env.FRONTEND_URL,
+    origin: corsOrigin,
     credentials: true
 }));
 app.use(express_1.default.json({ limit: '10mb' })); // Support base64 image uploads

@@ -3,11 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRecommendations = exports.createProductReview = exports.getProductById = exports.getProducts = void 0;
+exports.getRecommendations = exports.createProductReview = exports.getProductById = exports.getProducts = exports.fallbackProducts = void 0;
 const Product_js_1 = __importDefault(require("../models/Product.js"));
 const Review_js_1 = __importDefault(require("../models/Review.js"));
 const mongoose_1 = __importDefault(require("mongoose"));
-const fallbackProducts = [
+exports.fallbackProducts = [
     {
         _id: 'mock-product-1',
         name: 'Kanchipuram Pure Silk Bridal Saree',
@@ -166,7 +166,7 @@ const applyProductFilters = (items, query) => {
 const getProducts = async (req, res) => {
     try {
         if (useFallbackData()) {
-            res.json(applyProductFilters(fallbackProducts, req.query));
+            res.json(applyProductFilters(exports.fallbackProducts, req.query));
             return;
         }
         const { search, category, minPrice, maxPrice, sort, page = 1, limit = 12 } = req.query;
@@ -224,7 +224,7 @@ exports.getProducts = getProducts;
 const getProductById = async (req, res) => {
     try {
         if (useFallbackData()) {
-            const product = fallbackProducts.find((item) => item._id === req.params.id);
+            const product = exports.fallbackProducts.find((item) => item._id === req.params.id);
             if (product) {
                 const reviews = [];
                 res.json({ product, reviews });
@@ -297,12 +297,12 @@ exports.createProductReview = createProductReview;
 const getRecommendations = async (req, res) => {
     try {
         if (useFallbackData()) {
-            const product = fallbackProducts.find((item) => item._id === req.params.id);
+            const product = exports.fallbackProducts.find((item) => item._id === req.params.id);
             if (!product) {
                 res.status(404).json({ message: 'Product not found' });
                 return;
             }
-            const recommendations = fallbackProducts
+            const recommendations = exports.fallbackProducts
                 .filter((item) => item._id !== product._id && (item.category === product.category || item.fabric === product.fabric))
                 .slice(0, 4);
             res.json(recommendations);

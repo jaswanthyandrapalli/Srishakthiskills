@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.googleLogin = exports.loginUser = exports.registerUser = exports.verifyOTP = exports.resendOTP = exports.sendOTP = void 0;
+exports.googleLogin = exports.loginUser = exports.registerUser = exports.verifyOTP = exports.resendOTP = exports.sendOTP = exports.authFallbackUsers = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const mongoose_1 = __importDefault(require("mongoose"));
@@ -14,7 +14,34 @@ const emailService_js_1 = require("../services/emailService.js");
 const otpService_js_1 = require("../services/otpService.js");
 const validator_js_1 = require("../utils/validator.js");
 // Fallback users for offline development mode when MongoDB is unavailable
-const authFallbackUsers = new Map();
+exports.authFallbackUsers = new Map();
+// Pre-populate with default developer accounts
+const initializeFallbacks = async () => {
+    try {
+        const salt = await bcryptjs_1.default.genSalt(10);
+        const adminPassword = await bcryptjs_1.default.hash('AdminPassword123', salt);
+        const userPassword = await bcryptjs_1.default.hash('UserPassword123', salt);
+        exports.authFallbackUsers.set('admin@srisakthi.com', {
+            _id: 'fallback-admin@srisakthi.com',
+            name: 'Sri Sakthi Admin',
+            email: 'admin@srisakthi.com',
+            role: 'admin',
+            password: adminPassword,
+        });
+        exports.authFallbackUsers.set('user@srisakthi.com', {
+            _id: 'fallback-user@srisakthi.com',
+            name: 'Telugu Couture Lover',
+            email: 'user@srisakthi.com',
+            role: 'user',
+            password: userPassword,
+        });
+        console.log('Offline fallback user credentials pre-seeded.');
+    }
+    catch (err) {
+        console.error('Failed to initialize fallback users:', err.message);
+    }
+};
+initializeFallbacks();
 /**
  * Generates a JWT token for the user.
  */
@@ -172,7 +199,7 @@ const verifyOTP = async (req, res) => {
         }
         // Check if the user already exists in DB
         if (!db_js_1.isDbConnected) {
-            const fallbackUser = authFallbackUsers.get(email);
+            const fallbackUser = exports.authFallbackUsers.get(email);
             if (fallbackUser) {
                 res.status(200).json({
                     success: true,
@@ -250,7 +277,7 @@ const registerUser = async (req, res) => {
         }
         // Prevent duplicate email registration
         if (!db_js_1.isDbConnected) {
-            const existingFallback = authFallbackUsers.get(email);
+            const existingFallback = exports.authFallbackUsers.get(email);
             if (existingFallback) {
                 res.status(400).json({ success: false, message: 'Email is already registered.' });
                 return;
@@ -264,7 +291,7 @@ const registerUser = async (req, res) => {
             // Hash password using bcryptjs
             const salt = await bcryptjs_1.default.genSalt(10);
             const hashedPassword = await bcryptjs_1.default.hash(password, salt);
-            const isFirstUser = authFallbackUsers.size === 0;
+            const isFirstUser = exports.authFallbackUsers.size === 0;
             const role = isFirstUser ? 'super-admin' : 'user';
             const fallbackUser = {
                 _id: getFallbackUserId(email),
@@ -274,7 +301,7 @@ const registerUser = async (req, res) => {
                 password: hashedPassword,
                 role,
             };
-            authFallbackUsers.set(email, fallbackUser);
+            exports.authFallbackUsers.set(email, fallbackUser);
             await (0, otpService_js_1.clearVerification)(email);
             res.status(201).json({
                 success: true,
@@ -352,7 +379,7 @@ const loginUser = async (req, res) => {
             return;
         }
         if (!db_js_1.isDbConnected) {
-            const fallbackUser = authFallbackUsers.get(email);
+            const fallbackUser = exports.authFallbackUsers.get(email);
             if (fallbackUser && fallbackUser.password && (await bcryptjs_1.default.compare(password, fallbackUser.password))) {
                 if (['super-admin', 'admin', 'staff'].includes(fallbackUser.role)) {
                     // Log admin login activity in background
@@ -440,11 +467,11 @@ const googleLogin = async (req, res) => {
             return;
         }
         if (!db_js_1.isDbConnected) {
-            let fallbackUser = authFallbackUsers.get(email);
+            let fallbackUser = exports.authFallbackUsers.get(email);
             if (fallbackUser) {
                 if (!fallbackUser.googleId) {
                     fallbackUser.googleId = googleId;
-                    authFallbackUsers.set(email, fallbackUser);
+                    exports.authFallbackUsers.set(email, fallbackUser);
                 }
             }
             else {
@@ -455,7 +482,7 @@ const googleLogin = async (req, res) => {
                     role: 'user',
                     googleId,
                 };
-                authFallbackUsers.set(email, fallbackUser);
+                exports.authFallbackUsers.set(email, fallbackUser);
             }
             res.json({
                 success: true,
