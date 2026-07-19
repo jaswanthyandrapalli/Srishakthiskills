@@ -2,6 +2,11 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
+import { isDbConnected } from '../config/db.js';
+import { fallbackProducts } from './productController.js';
+
+// In-memory fallback wishlists (userId -> productIds)
+const fallbackWishlists = new Map<string, string[]>();
 
 // @desc    Get user wishlist
 // @route   GET /api/wishlist
@@ -9,6 +14,14 @@ import Product from '../models/Product.js';
 export const getWishlist = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user.id || req.user._id;
+    
+    if (!isDbConnected) {
+      const productIds = fallbackWishlists.get(userId.toString()) || [];
+      const populated = productIds.map(id => fallbackProducts.find(p => p._id === id)).filter(Boolean);
+      res.status(200).json({ success: true, wishlist: populated });
+      return;
+    }
+
     const user = await User.findById(userId).populate('wishlist');
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
@@ -32,6 +45,24 @@ export const addToWishlist = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    const userId = req.user.id || req.user._id;
+
+    if (!isDbConnected) {
+      const productExists = fallbackProducts.some(p => p._id === productId);
+      if (!productExists) {
+        res.status(404).json({ success: false, message: 'Product not found' });
+        return;
+      }
+      const productIds = fallbackWishlists.get(userId.toString()) || [];
+      if (!productIds.includes(productId)) {
+        productIds.push(productId);
+        fallbackWishlists.set(userId.toString(), productIds);
+      }
+      const populated = productIds.map(id => fallbackProducts.find(p => p._id === id)).filter(Boolean);
+      res.status(200).json({ success: true, wishlist: populated });
+      return;
+    }
+
     // Verify product exists
     const product = await Product.findById(productId);
     if (!product) {
@@ -39,7 +70,6 @@ export const addToWishlist = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    const userId = req.user.id || req.user._id;
     const user = await User.findByIdAndUpdate(
       userId,
       { $addToSet: { wishlist: productId } },
@@ -65,6 +95,15 @@ export const removeFromWishlist = async (req: AuthRequest, res: Response): Promi
   try {
     const productId = req.params.id;
     const userId = req.user.id || req.user._id;
+
+    if (!isDbConnected) {
+      let productIds = fallbackWishlists.get(userId.toString()) || [];
+      productIds = productIds.filter(id => id !== productId);
+      fallbackWishlists.set(userId.toString(), productIds);
+      const populated = productIds.map(id => fallbackProducts.find(p => p._id === id)).filter(Boolean);
+      res.status(200).json({ success: true, wishlist: populated });
+      return;
+    }
 
     const user = await User.findByIdAndUpdate(
       userId,

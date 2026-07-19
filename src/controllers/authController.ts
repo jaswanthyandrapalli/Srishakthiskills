@@ -16,7 +16,7 @@ import {
 import { validateEmail, validatePassword } from '../utils/validator.js';
 
 // Fallback users for offline development mode when MongoDB is unavailable
-const authFallbackUsers = new Map<string, {
+export const authFallbackUsers = new Map<string, {
   _id: string;
   name: string;
   email: string;
@@ -25,6 +25,35 @@ const authFallbackUsers = new Map<string, {
   password?: string;
   googleId?: string;
 }>();
+
+// Pre-populate with default developer accounts
+const initializeFallbacks = async () => {
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const adminPassword = await bcrypt.hash('AdminPassword123', salt);
+    const userPassword = await bcrypt.hash('UserPassword123', salt);
+
+    authFallbackUsers.set('admin@srisakthi.com', {
+      _id: 'fallback-admin@srisakthi.com',
+      name: 'Sri Sakthi Admin',
+      email: 'admin@srisakthi.com',
+      role: 'admin',
+      password: adminPassword,
+    });
+
+    authFallbackUsers.set('user@srisakthi.com', {
+      _id: 'fallback-user@srisakthi.com',
+      name: 'Telugu Couture Lover',
+      email: 'user@srisakthi.com',
+      role: 'user',
+      password: userPassword,
+    });
+    console.log('Offline fallback user credentials pre-seeded.');
+  } catch (err: any) {
+    console.error('Failed to initialize fallback users:', err.message);
+  }
+};
+initializeFallbacks();
 
 /**
  * Generates a JWT token for the user.

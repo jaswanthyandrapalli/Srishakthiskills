@@ -3,7 +3,7 @@ import Product from '../models/Product.js';
 import Review from '../models/Review.js';
 import mongoose from 'mongoose';
 
-const fallbackProducts = [
+export const fallbackProducts = [
   {
     _id: 'mock-product-1',
     name: 'Kanchipuram Pure Silk Bridal Saree',

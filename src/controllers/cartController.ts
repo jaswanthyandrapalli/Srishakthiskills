@@ -1,6 +1,26 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 import Cart from '../models/Cart.js';
+import { isDbConnected } from '../config/db.js';
+
+// In-memory fallback cart store
+const fallbackCarts = new Map<string, any>();
+
+const getFallbackCart = (userId: string) => {
+  let cart = fallbackCarts.get(userId);
+  if (!cart) {
+    cart = {
+      user: userId,
+      items: [],
+      save: async function() {
+        fallbackCarts.set(userId, this);
+        return this;
+      }
+    };
+    fallbackCarts.set(userId, cart);
+  }
+  return cart;
+};
 
 /**
  * @desc    Get logged in user's cart
@@ -10,10 +30,15 @@ import Cart from '../models/Cart.js';
 export const getCart = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user._id || req.user.id;
-    let cart = await Cart.findOne({ user: userId });
+    let cart;
     
-    if (!cart) {
-      cart = await Cart.create({ user: userId, items: [] });
+    if (!isDbConnected) {
+      cart = getFallbackCart(userId.toString());
+    } else {
+      cart = await Cart.findOne({ user: userId });
+      if (!cart) {
+        cart = await Cart.create({ user: userId, items: [] });
+      }
     }
     
     res.status(200).json({ success: true, cart });
@@ -38,9 +63,14 @@ export const addToCart = async (req: AuthRequest, res: Response): Promise<void> 
       return;
     }
 
-    let cart = await Cart.findOne({ user: userId });
-    if (!cart) {
-      cart = new Cart({ user: userId, items: [] });
+    let cart;
+    if (!isDbConnected) {
+      cart = getFallbackCart(userId.toString());
+    } else {
+      cart = await Cart.findOne({ user: userId });
+      if (!cart) {
+        cart = new Cart({ user: userId, items: [] });
+      }
     }
 
     const existingIndex = cart.items.findIndex(
@@ -87,7 +117,12 @@ export const updateCartQty = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    const cart = await Cart.findOne({ user: userId });
+    let cart;
+    if (!isDbConnected) {
+      cart = fallbackCarts.get(userId.toString());
+    } else {
+      cart = await Cart.findOne({ user: userId });
+    }
     if (!cart) {
       res.status(404).json({ success: false, message: 'Cart not found' });
       return;
@@ -125,7 +160,12 @@ export const removeFromCart = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    const cart = await Cart.findOne({ user: userId });
+    let cart;
+    if (!isDbConnected) {
+      cart = fallbackCarts.get(userId.toString());
+    } else {
+      cart = await Cart.findOne({ user: userId });
+    }
     if (!cart) {
       res.status(404).json({ success: false, message: 'Cart not found' });
       return;
@@ -151,7 +191,12 @@ export const removeFromCart = async (req: AuthRequest, res: Response): Promise<v
 export const clearCart = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user._id || req.user.id;
-    const cart = await Cart.findOne({ user: userId });
+    let cart;
+    if (!isDbConnected) {
+      cart = fallbackCarts.get(userId.toString());
+    } else {
+      cart = await Cart.findOne({ user: userId });
+    }
     
     if (cart) {
       cart.items = [];
