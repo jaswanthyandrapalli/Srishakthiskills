@@ -12,10 +12,9 @@ const getTransporter = () => {
   const from = process.env.SMTP_FROM;
 
   if (process.env.NODE_ENV === 'production') {
-    if (!host || !portStr || !secureStr || !user || !pass || !from) {
+    if (!host || !secureStr || !user || !pass || !from) {
       const missing = [];
       if (!host) missing.push('SMTP_HOST');
-      if (!portStr) missing.push('SMTP_PORT');
       if (!secureStr) missing.push('SMTP_SECURE');
       if (!user) missing.push('SMTP_USER');
       if (!pass) missing.push('SMTP_PASS');
