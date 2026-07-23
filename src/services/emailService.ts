@@ -40,6 +40,10 @@ const getTransporter = () => {
       user,
       pass,
     },
+    // Timeouts to prevent hanging when SMTP is unreachable (Render has a 30s request limit)
+    connectionTimeout: 10000, // 10 seconds to establish connection
+    greetingTimeout: 10000,   // 10 seconds for SMTP greeting
+    socketTimeout: 10000,     // 10 seconds for socket inactivity
   });
 };
 

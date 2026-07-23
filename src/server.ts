@@ -28,10 +28,29 @@ app.use(helmet({
   contentSecurityPolicy: false, // Turn off CSP for easy local development / integration
 }));
 const frontendUrl = process.env.FRONTEND_URL;
-const corsOrigin = frontendUrl ? frontendUrl.replace(/\/$/, '') : 'http://localhost:3000';
+// Support multiple comma-separated origins (e.g. "https://app.vercel.app,https://custom-domain.com")
+const allowedOrigins: string[] = [];
+if (frontendUrl) {
+  frontendUrl.split(',').forEach(url => {
+    const trimmed = url.trim().replace(/\/$/, '');
+    if (trimmed) allowedOrigins.push(trimmed);
+  });
+}
+// Always allow localhost for development
+if (!allowedOrigins.includes('http://localhost:3000')) {
+  allowedOrigins.push('http://localhost:3000');
+}
 
 app.use(cors({
-  origin: corsOrigin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' })); // Support base64 image uploads

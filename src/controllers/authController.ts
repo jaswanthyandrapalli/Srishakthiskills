@@ -15,6 +15,19 @@ import {
 } from '../services/otpService.js';
 import { validateEmail, validatePassword } from '../utils/validator.js';
 
+/**
+ * Wraps a promise with a timeout. If the promise doesn't resolve within
+ * the specified duration, it rejects with a timeout error.
+ */
+const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+    ),
+  ]);
+};
+
 // Fallback users for offline development mode when MongoDB is unavailable
 export const authFallbackUsers = new Map<string, {
   _id: string;
@@ -107,7 +120,7 @@ export const sendOTP = async (req: Request, res: Response): Promise<void> => {
 
     // Send the email containing the OTP
     try {
-      await sendOTPEmail(email, otp);
+      await withTimeout(sendOTPEmail(email, otp), 15000, 'OTP email delivery');
       
       res.status(200).json({
         success: true,
@@ -174,7 +187,7 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
 
     // Send OTP via Nodemailer
     try {
-      await sendOTPEmail(email, otp);
+      await withTimeout(sendOTPEmail(email, otp), 15000, 'OTP email delivery');
       res.status(200).json({
         success: true,
         message: 'OTP sent successfully to your email.'
