@@ -37,14 +37,17 @@ if (frontendUrl) {
   });
 }
 // Always allow localhost for development
-if (!allowedOrigins.includes('http://localhost:3000')) {
-  allowedOrigins.push('http://localhost:3000');
-}
+const localOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+localOrigins.forEach(localOrigin => {
+  if (!allowedOrigins.includes(localOrigin)) {
+    allowedOrigins.push(localOrigin);
+  }
+});
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or localhost
+    if (!origin || allowedOrigins.includes(origin) || (origin && origin.startsWith('http://localhost:')) || (origin && origin.startsWith('http://127.0.0.1:'))) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked request from origin: ${origin}`);
@@ -275,6 +278,16 @@ app.use('/api/cart', cartRoutes);
 // Base Route
 app.get('/', (req, res) => {
   res.send('Sri Sakthi Sarees API server is running...');
+});
+
+// Health check API
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Sri Sakthi Sarees API is healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
 // Error handling middleware
